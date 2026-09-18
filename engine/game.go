@@ -31,6 +31,8 @@ type Game struct {
 	resigned           Color // Empty if nobody resigned
 	lastPoint          *Point
 	history            []snapshot
+	handicap           int
+	moves              []Move
 }
 
 type snapshot struct {
@@ -65,6 +67,17 @@ func (g *Game) Over() bool        { return g.over }
 func (g *Game) Resigned() Color   { return g.resigned }
 func (g *Game) LastPoint() *Point { return clonePoint(g.lastPoint) }
 func (g *Game) Ko() *Point        { return clonePoint(g.ko) }
+func (g *Game) Handicap() int     { return g.handicap }
+func (g *Game) Moves() []Move     { return append([]Move(nil), g.moves...) }
+func (g *Game) MoveCount() int    { return len(g.moves) }
+
+func (g *Game) LastMove() *Move {
+	if len(g.moves) == 0 {
+		return nil
+	}
+	m := g.moves[len(g.moves)-1]
+	return &m
+}
 
 // Neighbors returns the on-board 4-adjacent points.
 func (g *Game) Neighbors(p Point) []Point { return g.neighbors(p) }
@@ -96,6 +109,7 @@ func (g *Game) Clone() *Game {
 	cp.board = append([]Color(nil), g.board...)
 	cp.ko = clonePoint(g.ko)
 	cp.lastPoint = clonePoint(g.lastPoint)
+	cp.moves = append([]Move(nil), g.moves...)
 	cp.history = append([]snapshot(nil), g.history...)
 	for i := range cp.history {
 		cp.history[i].board = append([]Color(nil), g.history[i].board...)
@@ -142,6 +156,9 @@ func (g *Game) Undo() error {
 	g.over = s.over
 	g.resigned = s.resigned
 	g.lastPoint = clonePoint(s.lastPoint)
+	if len(g.moves) > 0 {
+		g.moves = g.moves[:len(g.moves)-1]
+	}
 	return nil
 }
 
@@ -182,12 +199,19 @@ func (g *Game) Play(p Point) error {
 		return err
 	}
 	g.save()
-	g.board[g.idx(p)] = g.toPlay
-	n := g.removeDead(g.toPlay.Opponent())
-	g.captured[g.toPlay] += n
+	who := g.toPlay
+	g.board[g.idx(p)] = who
+	n := g.removeDead(who.Opponent())
+	g.captured[who] += n
 	g.ko = g.simpleKo(p, n)
 	g.consecutivePasses = 0
-	g.lastPoint = &Point{p.X, p.Y}
+	g.lastPoint = &Point{X: p.X, Y: p.Y}
+	g.moves = append(g.moves, Move{
+		Color:    who,
+		Point:    &Point{X: p.X, Y: p.Y},
+		Captured: n,
+		Comment:  commentPlay(n),
+	})
 	g.toPlay = g.toPlay.Opponent()
 	return nil
 }
@@ -241,10 +265,12 @@ func (g *Game) Pass() error {
 		return ErrGameOver
 	}
 	g.save()
+	who := g.toPlay
 	g.ko = nil
 	g.lastPoint = nil
 	g.consecutivePasses++
-	g.toPlay = g.toPlay.Opponent()
+	g.moves = append(g.moves, Move{Color: who, Pass: true, Comment: "pass"})
+	g.toPlay = who.Opponent()
 	if g.consecutivePasses >= 2 {
 		g.over = true
 	}
@@ -257,9 +283,11 @@ func (g *Game) Resign() error {
 		return ErrGameOver
 	}
 	g.save()
-	g.resigned = g.toPlay
+	who := g.toPlay
+	g.resigned = who
 	g.over = true
 	g.lastPoint = nil
+	g.moves = append(g.moves, Move{Color: who, Resign: true, Comment: "resign"})
 	return nil
 }
 

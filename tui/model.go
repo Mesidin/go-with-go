@@ -10,16 +10,19 @@ import (
 	"go-with-go/bot"
 	"go-with-go/engine"
 	"go-with-go/learn"
+	"go-with-go/tsumego"
 )
 
 type scene int
 
 const (
 	sceneMenu scene = iota
+	sceneSetup
 	scenePlay
 	sceneScore
 	sceneResult
 	sceneLearn
+	sceneTsumego
 )
 
 type mode int
@@ -44,7 +47,9 @@ type model struct {
 	status string
 	width  int
 	height int
-	course *learn.Run
+	course    *learn.Run
+	tsume     *tsumego.Run
+	botStrong bool
 }
 
 func New() tea.Model {
@@ -75,7 +80,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "ctrl+c", "q":
-		if m.scene == scenePlay || m.scene == sceneScore || m.scene == sceneResult {
+		if m.scene == scenePlay || m.scene == sceneScore || m.scene == sceneResult || m.scene == sceneLearn || m.scene == sceneTsumego {
 			if msg.String() == "q" && m.scene != sceneMenu {
 				m.scene = sceneMenu
 				return m, nil
@@ -89,6 +94,8 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch m.scene {
 	case sceneMenu:
 		return m.menuKey(msg)
+	case sceneSetup:
+		return m.setupKey(msg)
 	case scenePlay:
 		return m.playKey(msg)
 	case sceneScore:
@@ -99,11 +106,32 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case sceneLearn:
 		return m.learnKey(msg)
+	case sceneTsumego:
+		return m.tsumeKey(msg)
 	}
 	return m, nil
 }
 
 func (m model) menuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		m.scene = sceneSetup
+		m.status = "enter play  ·  esc back"
+		return m, nil
+	case "t":
+		return m.startLearn()
+	case "g":
+		return m.startTsumego()
+	case "l":
+		m.status = "drop an .sgf on the desktop game, or put files in games/"
+		return m, nil
+	case "q":
+		return m, tea.Quit
+	}
+	return m, nil
+}
+
+func (m model) setupKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	sizes := []int{9, 13, 19}
 	modes := []mode{humanHuman, humanBlack, humanWhite}
 	switch msg.String() {
@@ -127,12 +155,16 @@ func (m model) menuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.modeI++
 		}
 		m.mode = modes[m.modeI]
-	case "enter", "s":
+	case "b":
+		if m.mode != humanHuman {
+			m.botStrong = !m.botStrong
+		}
+	case "enter":
 		return m.start()
-	case "t":
-		return m.startLearn()
+	case "esc":
+		m.scene = sceneMenu
 	case "q":
-		return m, tea.Quit
+		m.scene = sceneMenu
 	}
 	return m, nil
 }
@@ -147,6 +179,7 @@ func (m model) start() (tea.Model, tea.Cmd) {
 	m.dead = map[engine.Point]struct{}{}
 	m.cursor = engine.Point{X: m.size / 2, Y: m.size / 2}
 	m.scene = scenePlay
+	m.bot.Strong = m.botStrong
 	m.status = "enter place  ·  p pass  ·  u undo  ·  r resign  ·  q menu"
 	if m.botToPlay() {
 		return m.botMove()
@@ -193,6 +226,9 @@ func (m model) playKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.tryPlay(m.cursor)
 	case "p":
 		return m.doPass()
+	case "s":
+		m.status = tuiSaveSGF(m.eng)
+		return m, nil
 	case "u":
 		return m.doUndo()
 	case "r":
@@ -327,7 +363,7 @@ func (m model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	if msg.Action != tea.MouseActionPress || msg.Button != tea.MouseButtonLeft {
 		return m, nil
 	}
-	if m.scene != scenePlay && m.scene != sceneScore && m.scene != sceneLearn {
+	if m.scene != scenePlay && m.scene != sceneScore && m.scene != sceneLearn && m.scene != sceneTsumego {
 		return m, nil
 	}
 	// Board is drawn starting at row 3, col 4 (after rank label).
@@ -342,6 +378,9 @@ func (m model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	}
 	if m.scene == sceneLearn {
 		return m.learnClick(m.cursor)
+	}
+	if m.scene == sceneTsumego {
+		return m.tsumeClick(m.cursor)
 	}
 	m.toggleDead(m.cursor)
 	return m, nil

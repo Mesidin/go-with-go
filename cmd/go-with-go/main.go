@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -31,7 +32,7 @@ func main() {
 	ebiten.SetWindowSize(960, 1040)
 	ebiten.SetWindowTitle("Go with Go")
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
-	if err := ebiten.RunGame(ui.NewApp()); err != nil {
+	if err := ebiten.RunGame(ui.NewApp()); err != nil && !errors.Is(err, ebiten.Termination) {
 		log.Fatal(err)
 	}
 }

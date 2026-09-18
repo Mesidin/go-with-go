@@ -43,6 +43,18 @@ func TestJapaneseTerritoryAndKomi(t *testing.T) {
 	if r.String() != want {
 		t.Fatalf("headline %q, want %q", r.String(), want)
 	}
+	terr := g.Territory(nil)
+	nb, nw := 0, 0
+	for _, c := range terr {
+		if c == Black {
+			nb++
+		} else if c == White {
+			nw++
+		}
+	}
+	if nb != 21 || nw != 14 {
+		t.Fatalf("territory map B=%d W=%d", nb, nw)
+	}
 }
 
 func TestDameScoresForNeither(t *testing.T) {

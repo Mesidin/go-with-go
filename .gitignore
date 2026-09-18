@@ -7,3 +7,4 @@
 game-stderr.txt
 game-stdout.txt
 vendor/
+games/*.sgf

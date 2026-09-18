@@ -137,7 +137,7 @@ func (a *App) drawLearn(screen *ebiten.Image, mx, my int) {
 
 	if a.eng != nil {
 		bv := a.learnBoard()
-		bv.draw(screen, a.eng, a.hover, nil, a.flash, a.course.Marks())
+		bv.draw(screen, a.eng, a.hover, nil, a.flash, a.course.Marks(), nil)
 	}
 
 	drawPanel(screen, 0, float32(screenH-learnBotH), screenW, learnBotH)

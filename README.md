@@ -9,6 +9,8 @@ One rules engine, three ways to play: a native window, the same UI in a browser 
 ## Requirements
 
 - Go 1.26 or later ([go.dev/dl](https://go.dev/dl/)). Ebitengine v2.10 is pure Go on desktop, so you do not need a C compiler.
+
+Menus, HUD, and the TUI follow the **active Omarchy theme** (`colors.toml` under `~/.local/state/omarchy/current/theme`). Off Omarchy, or before you pick a theme, the chrome is [Gold Rush](https://github.com/tahayvr/omarchy-gold-rush-theme). Switching themes with `omarchy theme set` retints a running window. The **goban stays wood** on every OS.
 - A graphics driver for the windowed app (any ordinary desktop).
 - On Omarchy / other Wayland Linux: XWayland (Omarchy includes it).
 
@@ -132,9 +134,19 @@ Add `export PATH="$(go env GOPATH)/bin:$PATH"` to your shell config if the comma
 
 ## How to play
 
-Click an intersection to place a stone. **P** pass, **U** undo, **R** resign, **Esc** menu. After two passes, click groups to mark them dead, then confirm.
+The home screen is Start game, Learn to play, Tsumego, Load SGF, and Quit. Start game opens setup (board, humans vs bot, handicap, komi, clock). Bot easy/club appears only if you pick Black vs bot or White vs bot.
+
+Click an intersection to place a stone. **P** pass, **U** undo, **R** resign, **Esc** menu. After two passes, click groups to mark them dead. Empty points shade as territory: dark for Black, light for White, small brown for dame. Stones on the board do not count.
 
 **Learn to play** (menu button, or `t` in the TUI) walks through placing, liberties, capture, suicide, ko, two eyes, and Japanese scoring on the real board. Skip and Back move between lessons.
+
+**Tsumego** is a set of life-and-death exercises. Play the vital point; a wrong legal move is taken back so you can try again.
+
+**SGF** (Smart Game Format) is the usual `.sgf` text file for a Go game: size, komi, handicap, and every move. **Save (S)** writes `games/YYYYMMDD-HHMMSS.sgf`. **Load SGF** lists that folder. You can also drop an `.sgf` file on the window.
+
+**Moves (M)** shows the move list with coordinates (A–T, skipping I) and capture comments.
+
+Handicap 2–9 places Black on the star points and White plays first (komi switches to 0.5 unless you change it). The clock is simple sudden death per player. **Bot club** adds self-atari and one-reply capture checks; **easy** is the original sparring partner.
 
 Vs the bot, undo takes back the bot reply and your move together.
 
@@ -144,7 +156,7 @@ Vs the bot, undo takes back the bot reply and your move together.
 go run ./cmd/tui
 ```
 
-Arrows or `hjkl` to move, Enter to play, `p` pass, `u` undo, `r` resign, `q` menu. In scoring, Enter marks dead, `c` confirms, `x` resumes.
+Enter opens setup, then Enter starts. `t` learn, `g` tsumego, `q` quit. In play: arrows or `hjkl`, Enter to play, `p` pass, `u` undo, `r` resign, `s` save SGF. In scoring, Enter marks dead, `c` confirms, `x` resumes.
 
 ### Browser (no game server)
 
@@ -185,9 +197,10 @@ The bot is a 9×9 sparring partner, not a ranked engine.
 ## Layout
 
 ```
-engine/   rules, Japanese scoring (no UI)
-bot/      capture-aware heuristic
+engine/   rules, Japanese scoring, SGF, handicap (no UI)
+bot/      easy and club heuristics
 learn/    interactive beginner course
+tsumego/  life-and-death problems
 ui/       Ebitengine window (desktop + WASM)
 tui/      Bubble Tea terminal UI
 cmd/go-with-go

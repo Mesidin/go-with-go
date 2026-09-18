@@ -76,7 +76,7 @@ func (g *Game) Score(dead map[Point]struct{}) Result {
 		}
 	}
 
-	blackTerr, whiteTerr := territory(g.size, board)
+	_, blackTerr, whiteTerr := floodTerritory(g.size, board)
 
 	r := Result{
 		BlackTerritory: blackTerr,
@@ -98,7 +98,37 @@ func (g *Game) Score(dead map[Point]struct{}) Result {
 	return r
 }
 
-func territory(size int, board []Color) (black, white int) {
+// Territory maps empty intersections to the color that surrounds them.
+// Dame (touching both colors) and points under living stones are omitted.
+// Dead stones in dead are treated as captured and their points can become territory.
+func (g *Game) Territory(dead map[Point]struct{}) map[Point]Color {
+	if g.resigned != Empty {
+		return nil
+	}
+	board := append([]Color(nil), g.board...)
+	if dead != nil {
+		for p := range dead {
+			if g.inBounds(p) {
+				board[g.idx(p)] = Empty
+			}
+		}
+	}
+	owners, _, _ := floodTerritory(g.size, board)
+	out := make(map[Point]Color)
+	for y := 0; y < g.size; y++ {
+		for x := 0; x < g.size; x++ {
+			p := Point{X: x, Y: y}
+			i := g.idx(p)
+			if board[i] == Empty && owners[i] != Empty {
+				out[p] = owners[i]
+			}
+		}
+	}
+	return out
+}
+
+func floodTerritory(size int, board []Color) (owners []Color, black, white int) {
+	owners = make([]Color, len(board))
 	seen := make([]bool, len(board))
 	idx := func(p Point) int { return p.Y*size + p.X }
 	in := func(p Point) bool { return p.X >= 0 && p.Y >= 0 && p.X < size && p.Y < size }
@@ -115,7 +145,7 @@ func territory(size int, board []Color) (black, white int) {
 
 	for y := 0; y < size; y++ {
 		for x := 0; x < size; x++ {
-			p := Point{x, y}
+			p := Point{X: x, Y: y}
 			i := idx(p)
 			if board[i] != Empty || seen[i] {
 				continue
@@ -140,13 +170,21 @@ func territory(size int, board []Color) (black, white int) {
 					}
 				}
 			}
+			var owner Color
 			switch {
 			case touchesB && !touchesW:
+				owner = Black
 				black += len(region)
 			case touchesW && !touchesB:
+				owner = White
 				white += len(region)
+			}
+			if owner != Empty {
+				for _, q := range region {
+					owners[idx(q)] = owner
+				}
 			}
 		}
 	}
-	return black, white
+	return owners, black, white
 }

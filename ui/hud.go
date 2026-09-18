@@ -39,11 +39,13 @@ func (b button) contains(x, y int) bool {
 }
 
 func drawButton(dst *ebiten.Image, b button, mx, my int) {
-	col := colBtn
+	fill, border := colBtn, colBtnBorder
 	if b.contains(mx, my) {
-		col = colBtnHot
+		fill = colBtnHot
+		border = colBtnText
 	}
-	vector.FillRect(dst, b.x, b.y, b.w, b.h, col, true)
+	vector.FillRect(dst, b.x, b.y, b.w, b.h, fill, true)
+	vectorStrokeRect(dst, b.x, b.y, b.w, b.h, border)
 	drawLabel(dst, b.label, b.x+b.w/2, b.y+b.h/2-9, face, colBtnText, true)
 }
 

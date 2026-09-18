@@ -8,6 +8,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"go-with-go/engine"
+	"go-with-go/internal/theme"
 )
 
 var (
@@ -24,15 +25,43 @@ var (
 	colKo        = color.RGBA{0x8B, 0x1A, 0x1A, 0xFF}
 	colDeadMark  = color.RGBA{0xE8, 0x5D, 0x04, 0xFF}
 	colFlash     = color.RGBA{0xE0, 0x30, 0x30, 0xAA}
-	colHUD       = color.RGBA{0x2B, 0x1D, 0x12, 0xFF}
-	colPanel     = color.RGBA{0x3D, 0x2A, 0x18, 0xFF}
-	colBtn       = color.RGBA{0x5C, 0x3D, 0x22, 0xFF}
-	colBtnHot    = color.RGBA{0x7A, 0x52, 0x2D, 0xFF}
-	colBtnText   = color.RGBA{0xF6, 0xEB, 0xD8, 0xFF}
-	colMuted     = color.RGBA{0xC4, 0xB0, 0x90, 0xFF}
-	colInk       = color.RGBA{0xF6, 0xEB, 0xD8, 0xFF}
-	colWin       = color.RGBA{0xF0, 0xC0, 0x40, 0xFF}
+	colHUD       color.RGBA
+	colPanel     color.RGBA
+	colBtn       color.RGBA
+	colBtnHot    color.RGBA
+	colBtnBorder color.RGBA
+	colBtnText   color.RGBA
+	colMuted     color.RGBA
+	colInk       color.RGBA
+	colWin       color.RGBA
+	colTerrB     = color.RGBA{0x1A, 0x18, 0x16, 0xB8}
+	colTerrW     = color.RGBA{0xFF, 0xF6, 0xE8, 0xC8}
+	colDame      = color.RGBA{0x8A, 0x70, 0x48, 0x99}
 )
+
+func init() {
+	applyChrome(theme.Current())
+}
+
+func applyChrome(p theme.Palette) {
+	colHUD = p.Background
+	colPanel = p.LighterBackground
+	colBtn = theme.Mix(p.Background, p.Foreground, 0.32)
+	colBtnHot = p.Accent
+	colBtnBorder = p.Muted
+	if colBtnBorder.R == colHUD.R && colBtnBorder.G == colHUD.G && colBtnBorder.B == colHUD.B {
+		colBtnBorder = p.Accent
+	}
+	colBtnText = p.Foreground
+	colMuted = p.Muted
+	colInk = p.Foreground
+	colWin = p.Accent
+	colLast = p.Red
+	colKo = p.Red
+	colFlash = p.Red
+	colFlash.A = 0xAA
+	colDeadMark = p.Accent
+}
 
 type boardView struct {
 	originX, originY float32
@@ -82,7 +111,7 @@ func (b boardView) hit(x, y int) (engine.Point, bool) {
 	return engine.Point{X: px, Y: py}, true
 }
 
-func (b boardView) draw(dst *ebiten.Image, g *engine.Game, hover *engine.Point, dead map[engine.Point]struct{}, flash *engine.Point, marks []engine.Point) {
+func (b boardView) draw(dst *ebiten.Image, g *engine.Game, hover *engine.Point, dead map[engine.Point]struct{}, flash *engine.Point, marks []engine.Point, terr map[engine.Point]engine.Color) {
 	board := b.cell * float32(b.size)
 	vector.FillRect(dst, b.originX-8, b.originY-8, board+16, board+16, colWoodDark, true)
 	vector.FillRect(dst, b.originX, b.originY, board, board, colWood, true)
@@ -105,6 +134,29 @@ func (b boardView) draw(dst *ebiten.Image, g *engine.Game, hover *engine.Point, 
 	if ko := g.Ko(); ko != nil {
 		cx, cy := b.pointCenter(*ko)
 		vector.StrokeCircle(dst, cx, cy, b.cell*0.18, 2, colKo, true)
+	}
+
+	if terr != nil {
+		tr := b.cell * 0.20
+		for y := 0; y < b.size; y++ {
+			for x := 0; x < b.size; x++ {
+				p := engine.Point{X: x, Y: y}
+				cx, cy := b.pointCenter(p)
+				if own, ok := terr[p]; ok {
+					col := colTerrB
+					if own == engine.White {
+						col = colTerrW
+					}
+					vector.FillCircle(dst, cx, cy, tr, col, true)
+					continue
+				}
+				if g.At(p) == engine.Empty {
+					if _, marked := dead[p]; !marked {
+						vector.FillCircle(dst, cx, cy, tr*0.45, colDame, true)
+					}
+				}
+			}
+		}
 	}
 
 	r := b.cell * 0.44

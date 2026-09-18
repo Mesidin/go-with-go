@@ -6,10 +6,11 @@ import (
 	"go-with-go/engine"
 )
 
-// Heuristic is a capture-aware legal-move bot. It is a 9x9 sparring partner,
-// not a ranked engine.
+// Heuristic is a capture-aware legal-move bot.
+// Easy is a 9×9 sparring partner. Club adds self-atari and 1-reply capture checks.
 type Heuristic struct {
-	rng *rand.Rand
+	rng    *rand.Rand
+	Strong bool
 }
 
 func New(rng *rand.Rand) *Heuristic {
@@ -97,7 +98,77 @@ func (h *Heuristic) scoreMove(g *engine.Game, p engine.Point) float64 {
 			s += 12
 		}
 	}
+
+	ownN := 0
+	for _, n := range g.Neighbors(p) {
+		if g.At(n) == me {
+			ownN++
+		}
+	}
+	s += float64(ownN) * 6
+
+	if h.Strong {
+		if gained == 0 && trial.LibertyCount(p) == 1 {
+			s -= 70 // self-atari
+		}
+		if n := maxReplyCapture(trial, opp); n > 0 {
+			s -= float64(n) * 90
+		}
+	}
 	return s
+}
+
+func maxReplyCapture(g *engine.Game, opp engine.Color) int {
+	// Cheap: if any of our groups has one liberty, opponent can take it
+	// by playing that liberty (when legal).
+	me := opp.Opponent()
+	seen := map[engine.Point]bool{}
+	best := 0
+	size := g.Size()
+	for y := 0; y < size; y++ {
+		for x := 0; x < size; x++ {
+			p := engine.Point{X: x, Y: y}
+			if g.At(p) != me || seen[p] {
+				continue
+			}
+			grp := g.Group(p)
+			for _, q := range grp {
+				seen[q] = true
+			}
+			if g.LibertyCount(p) != 1 {
+				continue
+			}
+			libs := libertiesOf(g, p)
+			if len(libs) != 1 {
+				continue
+			}
+			if !g.Legal(libs[0]) {
+				continue
+			}
+			if n := len(grp); n > best {
+				best = n
+			}
+		}
+	}
+	return best
+}
+
+func libertiesOf(g *engine.Game, p engine.Point) []engine.Point {
+	seen := map[engine.Point]struct{}{}
+	var out []engine.Point
+	for _, q := range g.Group(p) {
+		for _, n := range g.Neighbors(q) {
+			if g.At(n) != engine.Empty {
+				continue
+			}
+			if _, ok := seen[n]; ok {
+				continue
+			}
+			seen[n] = struct{}{}
+			out = append(out, n)
+		}
+	}
+	return out
 }
 
 func isTrueEye(g *engine.Game, p engine.Point, c engine.Color) bool {
