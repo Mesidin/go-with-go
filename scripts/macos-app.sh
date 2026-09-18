@@ -14,7 +14,17 @@ APP="${NAME}.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
-go build -o "$APP/Contents/MacOS/$BIN" "$PKG"
+# Build Universal binary (Apple Silicon + Intel) if lipo is available
+if command -v lipo >/dev/null 2>&1; then
+    echo "Building universal binary (Intel + Apple Silicon)..."
+    GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o "$APP/Contents/MacOS/${BIN}-intel" "$PKG"
+    GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o "$APP/Contents/MacOS/${BIN}-arm" "$PKG"
+    lipo -create -output "$APP/Contents/MacOS/$BIN" "$APP/Contents/MacOS/${BIN}-intel" "$APP/Contents/MacOS/${BIN}-arm"
+    rm "$APP/Contents/MacOS/${BIN}-intel" "$APP/Contents/MacOS/${BIN}-arm"
+else
+    echo "Building binary for target architecture..."
+    GOOS=darwin CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o "$APP/Contents/MacOS/$BIN" "$PKG"
+fi
 
 cat > "$APP/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -42,6 +52,6 @@ cat > "$APP/Contents/Info.plist" <<EOF
 EOF
 
 echo "Built $APP"
-echo "Copy it to Applications, then drag it onto the Dock:"
+echo "Copy it to Applications on any Mac, then drag it onto the Dock:"
 echo "  cp -R \"$APP\" /Applications/"
-echo "  open /Applications"
+echo "  xattr -cr /Applications/\"$APP\"   # Clear Gatekeeper quarantine flag if transferred via AirDrop/USB"
