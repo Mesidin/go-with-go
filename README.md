@@ -77,6 +77,16 @@ go build -o go-with-go ./cmd/go-with-go
 ./go-with-go
 ```
 
+To put it in the **Dock**, build an app bundle (on the Mac, from the repo root):
+
+```
+sh scripts/macos-app.sh
+cp -R "Go with Go.app" /Applications/
+open /Applications
+```
+
+Drag **Go with Go** onto the Dock. The first time macOS may ask you to right-click the app and choose Open. A raw `go-with-go` binary can also be dragged to the Dock, but a `.app` in `/Applications` is what the Dock is meant for.
+
 Install onto PATH (`$(go env GOPATH)/bin`, usually `~/go/bin`):
 
 ```

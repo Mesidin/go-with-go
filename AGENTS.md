@@ -22,6 +22,8 @@ go run ./cmd/tui
 
 On Windows PowerShell use `.\cmd\...`. Do not kill a running game window to rebuild unless the user asks.
 
+macOS Dock: `sh scripts/macos-app.sh` then copy `Go with Go.app` to `/Applications` and drag it to the Dock. Build that script on a Mac (or cross-compile `GOOS=darwin`).
+
 ## Omarchy theming
 
 Menus, HUD, buttons, and TUI colors follow the **active Omarchy theme**.
