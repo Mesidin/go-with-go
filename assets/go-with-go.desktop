@@ -3,6 +3,6 @@ Type=Application
 Name=Go with Go
 Comment=Go board game with AI bots, lessons, and tsumego puzzles
 Exec=go-with-go
-Icon=applications-games
+Icon=go-with-go
 Terminal=false
 Categories=Game;BoardGame;
