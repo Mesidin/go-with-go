@@ -1,0 +1,9 @@
+/web/game.wasm
+/web/wasm_exec.js
+*.exe
+*.test
+*.out
+*.log
+game-stderr.txt
+game-stdout.txt
+vendor/
